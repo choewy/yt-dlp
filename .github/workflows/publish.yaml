@@ -151,7 +151,6 @@ jobs:
       - name: Package release assets
         run: |
           tar -czf dist.tar.gz dist
-          tar -czf vendor.tar.gz vendor
 
       - id: create_release
         uses: actions/create-release@v1
@@ -171,14 +170,4 @@ jobs:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: ./dist.tar.gz
           asset_name: dist.tar.gz
-          asset_content_type: application/gzip
-
-      - name: Upload vendor asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./vendor.tar.gz
-          asset_name: vendor.tar.gz
           asset_content_type: application/gzip
