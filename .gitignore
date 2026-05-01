@@ -1,0 +1,9 @@
+/node_modules
+/dist
+/bin
+/test/**/*.mp4
+
+.DS_Store
+.codex
+.npm-cache
+.npmrc
