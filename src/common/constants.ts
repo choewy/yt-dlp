@@ -8,7 +8,7 @@ import os from 'os';
 const platform = os.platform();
 const arch = os.arch();
 
-export const ROOT_PATH = resolve(__dirname, '..');
+export const ROOT_PATH = resolve(__dirname, '..', '..');
 export const BIN_PATH = resolve(ROOT_PATH, 'bin');
 
 const ytDlpAssetName: YtDlpAssetName = {

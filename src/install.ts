@@ -1,4 +1,4 @@
-import { BIN_PATH, YT_DLP_ASSET_NAME, YT_DLP_BIN_PATH } from './constants';
+import { BIN_PATH, YT_DLP_ASSET_NAME, YT_DLP_BIN_PATH } from './common';
 
 import { chmodSync, createWriteStream, mkdirSync } from 'fs';
 import os from 'os';

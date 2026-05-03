@@ -1,13 +1,11 @@
-import { YtDlp } from './yt-dlp';
+import { YtDlpConfig, YtDlpThumbnail, YtDlpVideo } from './core';
 
-async function main() {
-  await new YtDlp()
-    .format('bv*[vcodec^=avc1][ext=mp4]+ba[ext=m4a]/b[ext=mp4]/b')
-    .mergeFormat('mp4')
-    .output('./test/test.mp4')
-    .noPlaylist()
-    .url('https://www.youtube.com/watch?v=Nu6G6riBy9o')
-    .toPath();
+export class YtDlp extends YtDlpConfig {
+  thumbnail(): YtDlpThumbnail {
+    return new YtDlpThumbnail(this.clone());
+  }
+
+  video(): YtDlpVideo {
+    return new YtDlpVideo(this.clone());
+  }
 }
-
-void main();

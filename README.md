@@ -1,19 +1,22 @@
 # @choewy/yt-dlp
 
-A Node.js/TypeScript wrapper around [`yt-dlp`](https://github.com/yt-dlp/yt-dlp).
+A Node.js / TypeScript wrapper for [`yt-dlp`](https://github.com/yt-dlp/yt-dlp).
 
-This package runs a platform-specific `yt-dlp` binary under the hood and uses [`ffmpeg-static`](https://www.npmjs.com/package/ffmpeg-static) as the default FFmpeg executable.
+This package runs a platform-specific `yt-dlp` binary and uses `ffmpeg-static` by default.
+
+---
 
 ## Features
 
-- Fluent `YtDlp` builder API
-- Downloads a platform-specific `yt-dlp` binary during installation
-- Uses bundled FFmpeg from `ffmpeg-static` by default
-- Supports custom FFmpeg paths
-- Supports format selection, output templates, merge/recode formats, and audio extraction
-- Enables `--no-playlist` and `--force-overwrites` by default
-- Returns downloads as a file path, `Buffer`, or Node.js stream
-- Optional debug mode that forwards yt-dlp output
+- Fluent builder API
+- Download video as file, buffer, or stream
+- Fetch thumbnail URL
+- Built-in yt-dlp binary (auto-installed)
+- Built-in FFmpeg (`ffmpeg-static`)
+- Fully typed API
+- Debug mode support
+
+---
 
 ## Installation
 
@@ -25,201 +28,243 @@ npm install @choewy/yt-dlp
 pnpm add @choewy/yt-dlp
 ```
 
-### pnpm approve-builds
+---
 
-This package uses install scripts in two places:
+## pnpm users
 
-- `@choewy/yt-dlp` runs `postinstall` to download the platform-specific `yt-dlp` binary.
-- `ffmpeg-static` runs an install script to prepare the FFmpeg binary.
-
-With pnpm, build/install scripts can be blocked until they are explicitly approved.
-
-If you install this package with pnpm, run:
+This package requires install scripts.
 
 ```bash
 pnpm approve-builds
 ```
 
-Select both `@choewy/yt-dlp` and `ffmpeg-static` when prompted.
+Approve:
 
-If the package was already installed before approval, rerun install or rebuild the packages:
+- `@choewy/yt-dlp`
+- `ffmpeg-static`
 
-```bash
-pnpm install
-```
-
-```bash
-pnpm rebuild ffmpeg-static
-```
-
-```bash
-pnpm rebuild @choewy/yt-dlp
-```
-
-If FFmpeg cannot be found, the wrapper throws this hint as well:
-
-```text
-[@choewy/yt-dlp] ffmpeg not found. If you are using pnpm, run: pnpm approve-builds
-```
-
-## Requirements
-
-- Node.js 18 or newer. The install script uses the global `fetch` API.
-- Network access during installation to download the `yt-dlp` release asset.
-- A supported operating system and architecture.
-
-## Supported Platforms
-
-| Platform | Architecture | yt-dlp asset |
-| -------- | ------------ | ------------ |
-| macOS    | `x64`, `arm64` | `yt-dlp_macos` |
-| Linux    | `x64` | `yt-dlp_linux` |
-| Linux    | `arm64` | `yt-dlp_linux_aarch64` |
-| Windows  | `x64`, `arm64` | `yt-dlp.exe` |
+---
 
 ## Quick Start
 
 ```ts
 import { YtDlp } from '@choewy/yt-dlp';
 
-async function main() {
-  const result = await new YtDlp()
-    .url('https://www.youtube.com/watch?v=VIDEO_ID')
-    .output('./video.mp4')
-    .mergeFormat('mp4')
-    .toPath({ debug: true });
+const result = await new YtDlp({
+  url: 'https://www.youtube.com/watch?v=VIDEO_ID',
+})
+  .mergeFormat('mp4')
+  .video()
+  .download();
 
-  console.log(result.path);
-}
-
-void main();
+console.log(result.path);
 ```
+
+---
 
 ## Examples
 
-### Download MP4 Video
+### Download video (file)
 
 ```ts
-import { YtDlp } from '@choewy/yt-dlp';
-
-const result = await new YtDlp()
-  .url('https://www.youtube.com/watch?v=VIDEO_ID')
-  .output('./video.mp4')
-  .mergeFormat('mp4')
-  .toPath();
-
-console.log(result.path);
+const result = await new YtDlp({ url }).mergeFormat('mp4').output('./video.mp4').video().download();
 ```
 
-### Extract Audio
+---
+
+### Download as buffer
 
 ```ts
-import { YtDlp } from '@choewy/yt-dlp';
-
-const result = await new YtDlp()
-  .url('https://www.youtube.com/watch?v=VIDEO_ID')
-  .output('./audio.%(ext)s')
-  .audioOnly()
-  .audioFormat('mp3')
-  .toPath({ debug: true });
-
-console.log(result.path);
+const { buffer } = await new YtDlp({ url }).mergeFormat('mp4').video().buffer();
 ```
 
-### Download as Buffer
+---
 
-```ts
-import { YtDlp } from '@choewy/yt-dlp';
-
-const result = await new YtDlp()
-  .url('https://www.youtube.com/watch?v=VIDEO_ID')
-  .mergeFormat('mp4')
-  .toBuffer();
-
-console.log(result.buffer);
-```
-
-### Download as Stream
+### Download as stream
 
 ```ts
 import { createWriteStream } from 'fs';
 
-import { YtDlp } from '@choewy/yt-dlp';
+const { stream } = await new YtDlp({ url }).mergeFormat('mp4').video().stream();
 
-const result = await new YtDlp()
-  .url('https://www.youtube.com/watch?v=VIDEO_ID')
-  .mergeFormat('mp4')
-  .toStream();
-
-result.stream.pipe(createWriteStream('./video.mp4'));
+stream.pipe(createWriteStream('./video.mp4'));
 ```
 
-### Use a Custom FFmpeg Binary
+---
+
+### Extract audio
 
 ```ts
-import { YtDlp } from '@choewy/yt-dlp';
-
-const result = await new YtDlp()
-  .ffmpeg('/usr/local/bin/ffmpeg')
-  .url('https://www.youtube.com/watch?v=VIDEO_ID')
-  .output('./video.mp4')
-  .mergeFormat('mp4')
-  .toPath();
-
-console.log(result.path);
+const result = await new YtDlp({ url }).audioOnly().audioFormat('mp3').output('./audio.%(ext)s').video().download();
 ```
+
+---
+
+### Get thumbnail URL
+
+```ts
+const thumbnail = await new YtDlp({ url }).thumbnail().url();
+```
+
+---
+
+### Custom FFmpeg
+
+```ts
+new YtDlp({ url }).ffmpeg('/usr/local/bin/ffmpeg').video().download();
+```
+
+---
 
 ## API
 
-### `new YtDlp()`
-
-Creates a new builder instance.
-
-Default options:
-
-| Option | Default |
-| ------ | ------- |
-| FFmpeg | `ffmpeg-static` path |
-| Format | `bv*[vcodec^=avc1][ext=mp4]+ba[ext=m4a]/b[ext=mp4]/b` |
-| Playlist handling | `--no-playlist` |
-| Overwrite handling | `--force-overwrites` |
-
-### Methods
-
-| Method | Description |
-| ------ | ----------- |
-| `ffmpeg(path: string)` | Sets the FFmpeg executable path passed to `--ffmpeg-location`. |
-| `format(format: string)` | Sets the yt-dlp format selector passed to `-f`. |
-| `output(path: string)` | Sets the output path or yt-dlp output template passed to `-o`. Required. |
-| `noPlaylist()` | Adds `--no-playlist`. This is already enabled by default. |
-| `mergeFormat(format)` | Sets `--merge-output-format`. Accepts `mp4`, `mkv`, or `webm`. |
-| `recodeVideo(format)` | Sets `--recode-video`. Accepts `mp4`, `mkv`, or `webm`. |
-| `audioOnly()` | Adds `-x` to extract audio. |
-| `audioFormat(format)` | Sets `--audio-format`. Accepts `mp3`, `m4a`, `aac`, or `wav`. |
-| `url(url: string)` | Sets the source URL. Required. |
-| `args()` | Builds and returns the yt-dlp argument list without executing it. |
-| `toBuffer(options?)` | Runs yt-dlp and returns `{ origin, title, buffer }`. |
-| `toPath(options?)` | Runs yt-dlp, writes to `output(path)`, and returns `{ origin, title, path }`. |
-| `toStream(options?)` | Runs yt-dlp and returns `{ origin, title, stream }`. |
-| `exec(options?)` | Alias for `toPath(options?)` for existing callers. |
-
-`toBuffer()`, `toPath()`, `toStream()`, and `exec()` accept:
+### `new YtDlp(options)`
 
 ```ts
-type YtDlpRunOptions = {
-  debug?: boolean;
-};
+new YtDlp({
+  url: string,
+});
 ```
 
-When `debug` is `true`, yt-dlp output is printed directly. When `debug` is omitted or `false`, output is captured and included in thrown errors.
+---
+
+## Builder Methods
+
+All methods are chainable.
+
+```ts
+ytDlp
+  .url(url)
+  .format(format)
+  .output(path)
+  .mergeFormat('mp4')
+  .audioOnly()
+  .audioFormat('mp3')
+  .ffmpeg(path)
+  .quiet()
+  .noWarnings()
+  .noProgress()
+  .retries(3)
+  .fragmentRetries(3)
+  .concurrentFragments(4)
+  .debug(true);
+```
+
+---
+
+## Configuration Options
+
+| Option                | Type                       | Default         | Description                               |
+| --------------------- | -------------------------- | --------------- | ----------------------------------------- |
+| `url`                 | `string`                   | **required**    | Target media URL                          |
+| `ffmpeg`              | `string`                   | `ffmpeg-static` | Path to ffmpeg binary                     |
+| `format`              | `string`                   | mp4 optimized   | yt-dlp format selector                    |
+| `output`              | `string`                   | -               | Output path or template (`-o`)            |
+| `playlist`            | `boolean`                  | `false`         | Download playlist instead of single video |
+| `mergeFormat`         | `'mp4' \| 'mkv' \| 'webm'` | `mp4`           | Merge container format                    |
+| `audioOnly`           | `boolean`                  | `false`         | Extract audio only (`-x`)                 |
+| `audioFormat`         | `'mp3' \| 'm4a' \| 'wav'`  | -               | Audio format                              |
+| `overwrite`           | `boolean`                  | `true`          | Overwrite existing files                  |
+| `quiet`               | `boolean`                  | `true`          | Suppress output logs                      |
+| `noWarnings`          | `boolean`                  | `true`          | Suppress warnings                         |
+| `noProgress`          | `boolean`                  | `true`          | Disable progress output                   |
+| `restrictFilenames`   | `boolean`                  | `false`         | Use ASCII filenames only                  |
+| `paths`               | `string`                   | -               | Base output directory                     |
+| `retries`             | `number`                   | `3`             | Retry count                               |
+| `fragmentRetries`     | `number`                   | `3`             | Fragment retry count                      |
+| `concurrentFragments` | `number`                   | `4`             | Parallel fragment downloads               |
+| `embedThumbnail`      | `boolean`                  | `false`         | Embed thumbnail into media                |
+| `convertThumbnail`    | `'jpg' \| 'png' \| 'webp'` | -               | Convert thumbnail format                  |
+| `printJson`           | `boolean`                  | `false`         | Output metadata as JSON                   |
+| `debug`               | `boolean`                  | `false`         | Print yt-dlp stdout/stderr                |
+
+---
+
+## Video API
+
+```ts
+ytDlp.video();
+```
+
+### download()
+
+```ts
+{
+  origin: string;
+  title: string;
+  path: string;
+}
+```
+
+---
+
+### buffer()
+
+```ts
+{
+  origin: string;
+  title: string;
+  buffer: Buffer;
+}
+```
+
+---
+
+### stream()
+
+```ts
+{
+  origin: string;
+  title: string;
+  stream: Readable;
+}
+```
+
+---
+
+## Thumbnail API
+
+```ts
+ytDlp.thumbnail().url();
+```
+
+Returns:
+
+```ts
+Promise<string | null>;
+```
+
+---
 
 ## Constraints
 
-- `url()` and `output()` must be set before calling `args()` or `toPath()`.
-- `toBuffer()` and `toStream()` require `url()` but use a temporary file internally, so `output()` is optional for those methods.
-- FFmpeg must exist at the configured path.
-- `audioOnly()` and `mergeFormat()` cannot be used together.
-- The package currently exposes a library API only; it does not register a package CLI command.
+- `url` is required
+- `output` is required for `.download()`
+- `audioOnly` and `mergeFormat` should not be used together
+- FFmpeg must exist
+
+---
+
+## Architecture
+
+```
+YtDlp
+ ├─ YtDlpConfig
+ ├─ YtDlpArgsBuilder
+ ├─ YtDlpRunner
+ ├─ YtDlpVideo
+ └─ YtDlpThumbnail
+```
+
+---
+
+## Debug Mode
+
+```ts
+new YtDlp({ url }).debug(true).video().download();
+```
+
+---
 
 ## Development
 
@@ -230,35 +275,18 @@ pnpm build
 pnpm test
 ```
 
-Useful scripts:
-
-| Script | Description |
-| ------ | ----------- |
-| `pnpm build` | Builds TypeScript into `dist`. |
-| `pnpm test` | Runs Jest. |
-| `pnpm lint` | Runs ESLint with `--fix`. |
-| `pnpm dev` | Runs `src/main.ts` with nodemon. |
-
-## Troubleshooting
-
-### `ffmpeg not found`
-
-If you use pnpm, run `pnpm approve-builds` and approve both `@choewy/yt-dlp` and `ffmpeg-static`, then reinstall or rebuild the packages.
-
-You can also provide your own FFmpeg executable:
-
-```ts
-new YtDlp().ffmpeg('/path/to/ffmpeg');
-```
-
-### `yt-dlp` download failed
-
-The install script downloads from GitHub releases. Check your network, proxy, firewall, or GitHub availability, then reinstall the package.
-
-### Unsupported platform
-
-Only the platform and architecture combinations listed in [Supported Platforms](#supported-platforms) are mapped to a bundled `yt-dlp` release asset.
+---
 
 ## License
 
-[MIT](./LICENSE)
+MIT License
+
+---
+
+## Note
+
+Recommended for stable MP4 downloads:
+
+```ts
+new YtDlp({ url }).mergeFormat('mp4').video().download();
+```

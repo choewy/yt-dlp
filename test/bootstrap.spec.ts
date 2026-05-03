@@ -1,4 +1,4 @@
-import { YtDlp } from '../src/yt-dlp';
+import { YtDlp } from '../src/main';
 
 import { spawn } from 'child_process';
 import { EventEmitter, once } from 'events';
@@ -62,7 +62,7 @@ describe('YtDlp', () => {
   it('returns the resolved file path from toPath', async () => {
     mockPath('./video.mp4');
 
-    const result = await new YtDlp().ffmpeg(__filename).url('https://example.com/video').output('./video.%(ext)s').toPath();
+    const result = await new YtDlp({ url: 'https://example.com/video' }).ffmpeg(__filename).output('./video.%(ext)s').video().download();
 
     expect(result).toEqual({
       origin: 'https://example.com/video',
@@ -74,7 +74,7 @@ describe('YtDlp', () => {
   it('returns the downloaded file as a Buffer', async () => {
     mockDownload('buffer-content');
 
-    const result = await new YtDlp().ffmpeg(__filename).url('https://example.com/video').toBuffer();
+    const result = await new YtDlp({ url: 'https://example.com/video' }).ffmpeg(__filename).video().buffer();
 
     expect(result.buffer).toEqual(Buffer.from('buffer-content'));
     expect(result.origin).toBe('https://example.com/video');
@@ -84,7 +84,7 @@ describe('YtDlp', () => {
   it('returns the downloaded file as a stream', async () => {
     mockDownload('stream-content');
 
-    const result = await new YtDlp().ffmpeg(__filename).url('https://example.com/video').toStream();
+    const result = await new YtDlp({ url: 'https://example.com/video' }).ffmpeg(__filename).video().stream();
     const chunks: Buffer[] = [];
 
     result.stream.on('data', (chunk: Buffer) => {
