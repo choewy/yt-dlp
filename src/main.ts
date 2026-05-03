@@ -7,7 +7,7 @@ async function main() {
     .output('./test/test.mp4')
     .noPlaylist()
     .url('https://www.youtube.com/watch?v=Nu6G6riBy9o')
-    .exec();
+    .toPath();
 }
 
 void main();

@@ -12,7 +12,8 @@ This package runs a platform-specific `yt-dlp` binary under the hood and uses [`
 - Supports custom FFmpeg paths
 - Supports format selection, output templates, merge/recode formats, and audio extraction
 - Enables `--no-playlist` and `--force-overwrites` by default
-- Optional debug mode that inherits subprocess stdio
+- Returns downloads as a file path, `Buffer`, or Node.js stream
+- Optional debug mode that forwards yt-dlp output
 
 ## Installation
 
@@ -82,11 +83,13 @@ If FFmpeg cannot be found, the wrapper throws this hint as well:
 import { YtDlp } from '@choewy/yt-dlp';
 
 async function main() {
-  await new YtDlp()
+  const path = await new YtDlp()
     .url('https://www.youtube.com/watch?v=VIDEO_ID')
     .output('./video.mp4')
     .mergeFormat('mp4')
-    .exec({ debug: true });
+    .toPath({ debug: true });
+
+  console.log(path);
 }
 
 void main();
@@ -99,11 +102,11 @@ void main();
 ```ts
 import { YtDlp } from '@choewy/yt-dlp';
 
-await new YtDlp()
+const path = await new YtDlp()
   .url('https://www.youtube.com/watch?v=VIDEO_ID')
   .output('./video.mp4')
   .mergeFormat('mp4')
-  .exec();
+  .toPath();
 ```
 
 ### Extract Audio
@@ -111,12 +114,38 @@ await new YtDlp()
 ```ts
 import { YtDlp } from '@choewy/yt-dlp';
 
-await new YtDlp()
+const path = await new YtDlp()
   .url('https://www.youtube.com/watch?v=VIDEO_ID')
   .output('./audio.%(ext)s')
   .audioOnly()
   .audioFormat('mp3')
-  .exec({ debug: true });
+  .toPath({ debug: true });
+```
+
+### Download as Buffer
+
+```ts
+import { YtDlp } from '@choewy/yt-dlp';
+
+const buffer = await new YtDlp()
+  .url('https://www.youtube.com/watch?v=VIDEO_ID')
+  .mergeFormat('mp4')
+  .toBuffer();
+```
+
+### Download as Stream
+
+```ts
+import { createWriteStream } from 'fs';
+
+import { YtDlp } from '@choewy/yt-dlp';
+
+const stream = await new YtDlp()
+  .url('https://www.youtube.com/watch?v=VIDEO_ID')
+  .mergeFormat('mp4')
+  .toStream();
+
+stream.pipe(createWriteStream('./video.mp4'));
 ```
 
 ### Use a Custom FFmpeg Binary
@@ -124,12 +153,12 @@ await new YtDlp()
 ```ts
 import { YtDlp } from '@choewy/yt-dlp';
 
-await new YtDlp()
+const path = await new YtDlp()
   .ffmpeg('/usr/local/bin/ffmpeg')
   .url('https://www.youtube.com/watch?v=VIDEO_ID')
   .output('./video.mp4')
   .mergeFormat('mp4')
-  .exec();
+  .toPath();
 ```
 
 ## API
@@ -161,9 +190,12 @@ Default options:
 | `audioFormat(format)` | Sets `--audio-format`. Accepts `mp3`, `m4a`, `aac`, or `wav`. |
 | `url(url: string)` | Sets the source URL. Required. |
 | `args()` | Builds and returns the yt-dlp argument list without executing it. |
-| `exec(options?)` | Runs yt-dlp and resolves when the process exits with code `0`. |
+| `toBuffer(options?)` | Runs yt-dlp and returns the downloaded file as a `Buffer`. |
+| `toPath(options?)` | Runs yt-dlp, writes to `output(path)`, and returns the resolved file path. |
+| `toStream(options?)` | Runs yt-dlp and returns the downloaded file as a Node.js `Readable` stream. |
+| `exec(options?)` | Alias for `toPath(options?)` for existing callers. |
 
-`exec()` accepts:
+`toBuffer()`, `toPath()`, `toStream()`, and `exec()` accept:
 
 ```ts
 type YtDlpRunOptions = {
@@ -171,11 +203,12 @@ type YtDlpRunOptions = {
 };
 ```
 
-When `debug` is `true`, subprocess stdio is inherited so yt-dlp output is printed directly. When `debug` is omitted or `false`, output is captured and included in thrown errors.
+When `debug` is `true`, yt-dlp output is printed directly. When `debug` is omitted or `false`, output is captured and included in thrown errors.
 
 ## Constraints
 
-- `url()` and `output()` must be set before calling `args()` or `exec()`.
+- `url()` and `output()` must be set before calling `args()` or `toPath()`.
+- `toBuffer()` and `toStream()` require `url()` but use a temporary file internally, so `output()` is optional for those methods.
 - FFmpeg must exist at the configured path.
 - `audioOnly()` and `mergeFormat()` cannot be used together.
 - The package currently exposes a library API only; it does not register a package CLI command.

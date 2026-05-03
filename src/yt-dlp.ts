@@ -2,7 +2,11 @@ import { FFMPEG_PATH, YT_DLP_BIN_PATH } from './constants';
 import { YtDlpOptions, YtDlpRunOptions } from './types';
 
 import { spawn } from 'child_process';
-import { existsSync } from 'fs';
+import { createReadStream, existsSync } from 'fs';
+import { mkdtemp, readdir, readFile, rm, stat } from 'fs/promises';
+import { tmpdir } from 'os';
+import { join } from 'path';
+import { Readable } from 'stream';
 
 export class YtDlp {
   private readonly options: YtDlpOptions = {
@@ -57,11 +61,44 @@ export class YtDlp {
     return this;
   }
 
-  async exec(options?: YtDlpRunOptions) {
-    return this.run(this.args(), options);
+  async toBuffer(options?: YtDlpRunOptions): Promise<Buffer> {
+    const { cleanup, path } = await this.toTemporaryPath(options);
+
+    try {
+      return await readFile(path);
+    } finally {
+      await cleanup();
+    }
+  }
+
+  async toPath(options?: YtDlpRunOptions): Promise<string> {
+    const output = this.requireOutput();
+    const stdout = await this.run(this.withFilePathPrint(this.buildArgs(output)), options);
+
+    return this.parseFilePath(stdout) ?? output;
+  }
+
+  async toStream(options?: YtDlpRunOptions): Promise<Readable> {
+    const { cleanup, path } = await this.toTemporaryPath(options);
+    const stream = createReadStream(path);
+
+    stream.on('close', () => {
+      void cleanup();
+    });
+
+    return stream;
+  }
+
+  /** @deprecated */
+  async exec(options?: YtDlpRunOptions): Promise<string> {
+    return this.toPath(options);
   }
 
   args(): string[] {
+    return this.buildArgs(this.requireOutput());
+  }
+
+  private buildArgs(output: string): string[] {
     if (!this.options.ffmpeg) {
       throw new Error('[@choewy/yt-dlp] ffmpeg is required');
     }
@@ -72,10 +109,6 @@ export class YtDlp {
 
     if (!this.options.url) {
       throw new Error('[@choewy/yt-dlp] url is required');
-    }
-
-    if (!this.options.output) {
-      throw new Error('[@choewy/yt-dlp] output is required');
     }
 
     if (this.options.audioOnly && this.options.mergeFormat) {
@@ -114,39 +147,101 @@ export class YtDlp {
       args.push('--audio-format', this.options.audioFormat);
     }
 
-    args.push('-o', this.options.output);
+    args.push('-o', output);
     args.push(this.options.url);
 
     return args;
   }
 
+  private async findDownloadedFile(directory: string): Promise<string> {
+    const entries = await readdir(directory);
+
+    for (const entry of entries) {
+      const path = join(directory, entry);
+      const entryStat = await stat(path);
+
+      if (entryStat.isFile()) {
+        return path;
+      }
+    }
+
+    throw new Error('[@choewy/yt-dlp] downloaded file not found');
+  }
+
+  private parseFilePath(stdout: string): string | undefined {
+    const lines = stdout
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    return lines.at(-1);
+  }
+
+  private requireOutput(): string {
+    if (!this.options.output) {
+      throw new Error('[@choewy/yt-dlp] output is required');
+    }
+
+    return this.options.output;
+  }
+
+  private async toTemporaryPath(options?: YtDlpRunOptions): Promise<{ cleanup: () => Promise<void>; path: string }> {
+    const directory = await mkdtemp(join(tmpdir(), 'yt-dlp-'));
+    const cleanup = () => rm(directory, { force: true, recursive: true });
+
+    try {
+      const output = join(directory, 'download.%(ext)s');
+      const stdout = await this.run(this.withFilePathPrint(this.buildArgs(output)), options);
+      const path = this.parseFilePath(stdout) ?? (await this.findDownloadedFile(directory));
+
+      return { cleanup, path };
+    } catch (error) {
+      await cleanup();
+      throw error;
+    }
+  }
+
+  private withFilePathPrint(args: string[]): string[] {
+    const url = args.at(-1);
+
+    if (!url) {
+      return args;
+    }
+
+    return [...args.slice(0, -1), '--print', 'after_move:filepath', url];
+  }
+
   private run(args: string[], options?: YtDlpRunOptions) {
     const debug = options?.debug ?? false;
 
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<string>((resolve, reject) => {
       const child = spawn(YT_DLP_BIN_PATH, args, {
-        stdio: debug ? 'inherit' : 'pipe',
+        stdio: ['ignore', 'pipe', debug ? 'inherit' : 'pipe'],
       });
 
-      let stdout = '';
-      let stderr = '';
+      const stdout: Buffer[] = [];
+      const stderr: Buffer[] = [];
+
+      child.stdout?.on('data', (chunk: Buffer) => {
+        stdout.push(chunk);
+
+        if (debug) {
+          process.stdout.write(chunk);
+        }
+      });
 
       if (!debug) {
-        child.stdout?.setEncoding('utf-8');
-        child.stdout?.on('data', (chunk: string) => {
-          stdout += chunk.toString();
-        });
-        child.stderr?.on('data', (chunk: string) => {
-          stderr += chunk.toString();
+        child.stderr?.on('data', (chunk: Buffer) => {
+          stderr.push(chunk);
         });
       }
 
       child.on('error', reject);
       child.on('close', (code) => {
         if (code === 0) {
-          resolve();
+          resolve(Buffer.concat(stdout).toString('utf-8'));
         } else {
-          reject(new Error(`[@choewy/yt-dlp] exited with code ${code}\n${stderr || stdout}`));
+          reject(new Error(`[@choewy/yt-dlp] exited with code ${code}\n${Buffer.concat(stderr).toString('utf-8') || Buffer.concat(stdout).toString('utf-8')}`));
         }
       });
     });
