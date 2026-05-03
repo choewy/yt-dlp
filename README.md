@@ -83,13 +83,13 @@ If FFmpeg cannot be found, the wrapper throws this hint as well:
 import { YtDlp } from '@choewy/yt-dlp';
 
 async function main() {
-  const path = await new YtDlp()
+  const result = await new YtDlp()
     .url('https://www.youtube.com/watch?v=VIDEO_ID')
     .output('./video.mp4')
     .mergeFormat('mp4')
     .toPath({ debug: true });
 
-  console.log(path);
+  console.log(result.path);
 }
 
 void main();
@@ -102,11 +102,13 @@ void main();
 ```ts
 import { YtDlp } from '@choewy/yt-dlp';
 
-const path = await new YtDlp()
+const result = await new YtDlp()
   .url('https://www.youtube.com/watch?v=VIDEO_ID')
   .output('./video.mp4')
   .mergeFormat('mp4')
   .toPath();
+
+console.log(result.path);
 ```
 
 ### Extract Audio
@@ -114,12 +116,14 @@ const path = await new YtDlp()
 ```ts
 import { YtDlp } from '@choewy/yt-dlp';
 
-const path = await new YtDlp()
+const result = await new YtDlp()
   .url('https://www.youtube.com/watch?v=VIDEO_ID')
   .output('./audio.%(ext)s')
   .audioOnly()
   .audioFormat('mp3')
   .toPath({ debug: true });
+
+console.log(result.path);
 ```
 
 ### Download as Buffer
@@ -127,10 +131,12 @@ const path = await new YtDlp()
 ```ts
 import { YtDlp } from '@choewy/yt-dlp';
 
-const buffer = await new YtDlp()
+const result = await new YtDlp()
   .url('https://www.youtube.com/watch?v=VIDEO_ID')
   .mergeFormat('mp4')
   .toBuffer();
+
+console.log(result.buffer);
 ```
 
 ### Download as Stream
@@ -140,12 +146,12 @@ import { createWriteStream } from 'fs';
 
 import { YtDlp } from '@choewy/yt-dlp';
 
-const stream = await new YtDlp()
+const result = await new YtDlp()
   .url('https://www.youtube.com/watch?v=VIDEO_ID')
   .mergeFormat('mp4')
   .toStream();
 
-stream.pipe(createWriteStream('./video.mp4'));
+result.stream.pipe(createWriteStream('./video.mp4'));
 ```
 
 ### Use a Custom FFmpeg Binary
@@ -153,12 +159,14 @@ stream.pipe(createWriteStream('./video.mp4'));
 ```ts
 import { YtDlp } from '@choewy/yt-dlp';
 
-const path = await new YtDlp()
+const result = await new YtDlp()
   .ffmpeg('/usr/local/bin/ffmpeg')
   .url('https://www.youtube.com/watch?v=VIDEO_ID')
   .output('./video.mp4')
   .mergeFormat('mp4')
   .toPath();
+
+console.log(result.path);
 ```
 
 ## API
@@ -190,9 +198,9 @@ Default options:
 | `audioFormat(format)` | Sets `--audio-format`. Accepts `mp3`, `m4a`, `aac`, or `wav`. |
 | `url(url: string)` | Sets the source URL. Required. |
 | `args()` | Builds and returns the yt-dlp argument list without executing it. |
-| `toBuffer(options?)` | Runs yt-dlp and returns the downloaded file as a `Buffer`. |
-| `toPath(options?)` | Runs yt-dlp, writes to `output(path)`, and returns the resolved file path. |
-| `toStream(options?)` | Runs yt-dlp and returns the downloaded file as a Node.js `Readable` stream. |
+| `toBuffer(options?)` | Runs yt-dlp and returns `{ origin, title, buffer }`. |
+| `toPath(options?)` | Runs yt-dlp, writes to `output(path)`, and returns `{ origin, title, path }`. |
+| `toStream(options?)` | Runs yt-dlp and returns `{ origin, title, stream }`. |
 | `exec(options?)` | Alias for `toPath(options?)` for existing callers. |
 
 `toBuffer()`, `toPath()`, `toStream()`, and `exec()` accept:

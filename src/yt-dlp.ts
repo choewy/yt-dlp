@@ -1,12 +1,11 @@
 import { FFMPEG_PATH, YT_DLP_BIN_PATH } from './constants';
-import { YtDlpOptions, YtDlpRunOptions } from './types';
+import { YtDlpBufferResult, YtDlpOptions, YtDlpPathResult, YtDlpRunOptions, YtDlpStreamResult } from './types';
 
 import { spawn } from 'child_process';
 import { createReadStream, existsSync } from 'fs';
 import { mkdtemp, readdir, readFile, rm, stat } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { Readable } from 'stream';
 
 export class YtDlp {
   private readonly options: YtDlpOptions = {
@@ -61,36 +60,47 @@ export class YtDlp {
     return this;
   }
 
-  async toBuffer(options?: YtDlpRunOptions): Promise<Buffer> {
-    const { cleanup, path } = await this.toTemporaryPath(options);
+  async toBuffer(options?: YtDlpRunOptions): Promise<YtDlpBufferResult> {
+    const { cleanup, result } = await this.toTemporaryPath(options);
 
     try {
-      return await readFile(path);
+      return {
+        buffer: await readFile(result.path),
+        origin: result.origin,
+        title: result.title,
+      };
     } finally {
       await cleanup();
     }
   }
 
-  async toPath(options?: YtDlpRunOptions): Promise<string> {
+  async toPath(options?: YtDlpRunOptions): Promise<YtDlpPathResult> {
     const output = this.requireOutput();
-    const stdout = await this.run(this.withFilePathPrint(this.buildArgs(output)), options);
+    const stdout = await this.run(this.withResultPrints(this.buildArgs(output)), options);
+    const path = this.parsePrintValue(stdout, 'PATH') ?? output;
 
-    return this.parseFilePath(stdout) ?? output;
+    return this.toResult(stdout, path);
   }
 
-  async toStream(options?: YtDlpRunOptions): Promise<Readable> {
-    const { cleanup, path } = await this.toTemporaryPath(options);
-    const stream = createReadStream(path);
+  async toStream(options?: YtDlpRunOptions): Promise<YtDlpStreamResult> {
+    const { cleanup, result } = await this.toTemporaryPath(options);
+    const stream = createReadStream(result.path);
 
     stream.on('close', () => {
       void cleanup();
     });
 
-    return stream;
+    return {
+      origin: result.origin,
+      stream,
+      title: result.title,
+    };
   }
 
-  /** @deprecated */
-  async exec(options?: YtDlpRunOptions): Promise<string> {
+  /**
+   * @deprecated Use `toPath()` instead.
+   */
+  async exec(options?: YtDlpRunOptions): Promise<YtDlpPathResult> {
     return this.toPath(options);
   }
 
@@ -168,13 +178,14 @@ export class YtDlp {
     throw new Error('[@choewy/yt-dlp] downloaded file not found');
   }
 
-  private parseFilePath(stdout: string): string | undefined {
-    const lines = stdout
+  private parsePrintValue(stdout: string, key: 'PATH' | 'TITLE'): string | undefined {
+    const prefix = `__YT_DLP_${key}__:`;
+
+    return stdout
       .split(/\r?\n/)
       .map((line) => line.trim())
-      .filter(Boolean);
-
-    return lines.at(-1);
+      .find((line) => line.startsWith(prefix))
+      ?.slice(prefix.length);
   }
 
   private requireOutput(): string {
@@ -185,30 +196,46 @@ export class YtDlp {
     return this.options.output;
   }
 
-  private async toTemporaryPath(options?: YtDlpRunOptions): Promise<{ cleanup: () => Promise<void>; path: string }> {
+  private requireUrl(): string {
+    if (!this.options.url) {
+      throw new Error('[@choewy/yt-dlp] url is required');
+    }
+
+    return this.options.url;
+  }
+
+  private async toTemporaryPath(options?: YtDlpRunOptions): Promise<{ cleanup: () => Promise<void>; result: YtDlpPathResult }> {
     const directory = await mkdtemp(join(tmpdir(), 'yt-dlp-'));
     const cleanup = () => rm(directory, { force: true, recursive: true });
 
     try {
       const output = join(directory, 'download.%(ext)s');
-      const stdout = await this.run(this.withFilePathPrint(this.buildArgs(output)), options);
-      const path = this.parseFilePath(stdout) ?? (await this.findDownloadedFile(directory));
+      const stdout = await this.run(this.withResultPrints(this.buildArgs(output)), options);
+      const path = this.parsePrintValue(stdout, 'PATH') ?? (await this.findDownloadedFile(directory));
 
-      return { cleanup, path };
+      return { cleanup, result: this.toResult(stdout, path) };
     } catch (error) {
       await cleanup();
       throw error;
     }
   }
 
-  private withFilePathPrint(args: string[]): string[] {
+  private toResult(stdout: string, path: string): YtDlpPathResult {
+    return {
+      origin: this.requireUrl(),
+      path,
+      title: this.parsePrintValue(stdout, 'TITLE') ?? '',
+    };
+  }
+
+  private withResultPrints(args: string[]): string[] {
     const url = args.at(-1);
 
     if (!url) {
       return args;
     }
 
-    return [...args.slice(0, -1), '--print', 'after_move:filepath', url];
+    return [...args.slice(0, -1), '--print', 'after_move:__YT_DLP_PATH__:%(filepath)s', '--print', 'after_move:__YT_DLP_TITLE__:%(title)s', url];
   }
 
   private run(args: string[], options?: YtDlpRunOptions) {

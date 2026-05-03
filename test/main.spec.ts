@@ -21,7 +21,7 @@ function mockPath(path: string) {
     child.stdout = new PassThrough();
 
     process.nextTick(() => {
-      child.stdout.end(`${path}\n`);
+      child.stdout.end(`__YT_DLP_PATH__:${path}\n__YT_DLP_TITLE__:Example Video\n`);
       child.stderr.end();
       child.emit('close', 0);
     });
@@ -45,7 +45,7 @@ function mockDownload(content = 'media') {
 
       writeFileSync(path, content);
 
-      child.stdout.end(`${path}\n`);
+      child.stdout.end(`__YT_DLP_PATH__:${path}\n__YT_DLP_TITLE__:Example Video\n`);
       child.stderr.end();
       child.emit('close', 0);
     });
@@ -62,31 +62,39 @@ describe('YtDlp', () => {
   it('returns the resolved file path from toPath', async () => {
     mockPath('./video.mp4');
 
-    const path = await new YtDlp().ffmpeg(__filename).url('https://example.com/video').output('./video.%(ext)s').toPath();
+    const result = await new YtDlp().ffmpeg(__filename).url('https://example.com/video').output('./video.%(ext)s').toPath();
 
-    expect(path).toBe('./video.mp4');
+    expect(result).toEqual({
+      origin: 'https://example.com/video',
+      path: './video.mp4',
+      title: 'Example Video',
+    });
   });
 
   it('returns the downloaded file as a Buffer', async () => {
     mockDownload('buffer-content');
 
-    const buffer = await new YtDlp().ffmpeg(__filename).url('https://example.com/video').toBuffer();
+    const result = await new YtDlp().ffmpeg(__filename).url('https://example.com/video').toBuffer();
 
-    expect(buffer).toEqual(Buffer.from('buffer-content'));
+    expect(result.buffer).toEqual(Buffer.from('buffer-content'));
+    expect(result.origin).toBe('https://example.com/video');
+    expect(result.title).toBe('Example Video');
   });
 
   it('returns the downloaded file as a stream', async () => {
     mockDownload('stream-content');
 
-    const stream = await new YtDlp().ffmpeg(__filename).url('https://example.com/video').toStream();
+    const result = await new YtDlp().ffmpeg(__filename).url('https://example.com/video').toStream();
     const chunks: Buffer[] = [];
 
-    stream.on('data', (chunk: Buffer) => {
+    result.stream.on('data', (chunk: Buffer) => {
       chunks.push(chunk);
     });
 
-    await once(stream, 'end');
+    await once(result.stream, 'end');
 
     expect(Buffer.concat(chunks)).toEqual(Buffer.from('stream-content'));
+    expect(result.origin).toBe('https://example.com/video');
+    expect(result.title).toBe('Example Video');
   });
 });
