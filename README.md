@@ -60,6 +60,19 @@ const result = await new YtDlp({
 console.log(result.path);
 ```
 
+```ts
+import { YtDlp } from '@choewy/yt-dlp';
+
+const result = await new YtDlp({
+  url: 'https://vimeo.com/VIDEO_ID',
+})
+  .mergeFormat('mp4')
+  .video()
+  .download();
+
+console.log(result.path);
+```
+
 ---
 
 ## Examples
