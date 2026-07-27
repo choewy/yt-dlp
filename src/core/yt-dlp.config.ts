@@ -1,6 +1,6 @@
 import { FFMPEG_PATH } from '../common';
 
-import { YtDlpConfigOptions, YtDlpConfigSetter, YtDlpMergeFormat, YtDlpThumbnailFormat } from './types';
+import { YtDlpAudioFormat, YtDlpConfigOptions, YtDlpConfigSetter, YtDlpMergeFormat, YtDlpThumbnailFormat } from './types';
 
 export class YtDlpConfig implements YtDlpConfigSetter<YtDlpConfig> {
   private readonly options: YtDlpConfigOptions;
@@ -78,7 +78,7 @@ export class YtDlpConfig implements YtDlpConfigSetter<YtDlpConfig> {
     return this;
   }
 
-  audioFormat(value?: 'mp3' | 'm4a' | 'wav'): this {
+  audioFormat(value?: YtDlpAudioFormat): this {
     this.options.audioFormat = value;
     return this;
   }

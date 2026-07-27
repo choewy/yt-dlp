@@ -1,6 +1,7 @@
 import { Readable } from 'stream';
 
 export type YtDlpMergeFormat = 'mp4' | 'mkv' | 'webm';
+export type YtDlpAudioFormat = 'mp3' | 'm4a' | 'wav';
 export type YtDlpThumbnailFormat = 'jpg' | 'png' | 'webp';
 
 export type YtDlpRequiredConfigOptions = {
@@ -100,7 +101,7 @@ export type YtDlpOptionalConfigOptions = {
    * Maps to `--audio-format`.
    * `--audio-format` 옵션으로 전달됩니다.
    */
-  audioFormat?: 'mp3' | 'm4a' | 'wav';
+  audioFormat?: YtDlpAudioFormat;
 
   /**
    * Download only the thumbnail and skip media download.
@@ -250,3 +251,8 @@ export type YtDlpVideoBufferReturnValue = YtDlpVideoReturnValue & {
 export type YtDlpVideoStreamReturnValue = YtDlpVideoReturnValue & {
   stream: Readable;
 };
+
+export type YtDlpAudioReturnValue = YtDlpVideoReturnValue;
+export type YtDlpAudioDownloadReturnValue = YtDlpVideoDownloadReturnValue;
+export type YtDlpAudioBufferReturnValue = YtDlpVideoBufferReturnValue;
+export type YtDlpAudioStreamReturnValue = YtDlpVideoStreamReturnValue;

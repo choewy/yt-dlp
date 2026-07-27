@@ -97,4 +97,19 @@ describe('YtDlp', () => {
     expect(result.origin).toBe('https://example.com/video');
     expect(result.title).toBe('Example Video');
   });
+
+  it('extracts audio through the audio API', async () => {
+    mockPath('./audio.mp3');
+
+    const result = await new YtDlp({ url: 'https://example.com/video' }).ffmpeg(__filename).mergeFormat('mp4').audioFormat('mp3').output('./audio.%(ext)s').audio().download();
+    const [, args] = mockSpawn.mock.calls[0] as unknown as [string, string[]];
+
+    expect(args).toEqual(expect.arrayContaining(['-x', '--audio-format', 'mp3']));
+    expect(args).not.toContain('--merge-output-format');
+    expect(result).toEqual({
+      origin: 'https://example.com/video',
+      path: './audio.mp3',
+      title: 'Example Video',
+    });
+  });
 });

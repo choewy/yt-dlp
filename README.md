@@ -10,6 +10,7 @@ This package runs a platform-specific `yt-dlp` binary and uses `ffmpeg-static` b
 
 - Fluent builder API
 - Download video as file, buffer, or stream
+- Extract audio as file, buffer, or stream
 - Fetch thumbnail URL
 - Built-in yt-dlp binary (auto-installed)
 - Built-in FFmpeg (`ffmpeg-static`)
@@ -105,10 +106,10 @@ stream.pipe(createWriteStream('./video.mp4'));
 
 ---
 
-### Extract audio
+### Extract audio (file)
 
 ```ts
-const result = await new YtDlp({ url }).audioOnly().audioFormat('mp3').output('./audio.%(ext)s').video().download();
+const result = await new YtDlp({ url }).audioFormat('mp3').output('./audio.%(ext)s').audio().download();
 ```
 
 ---
@@ -235,6 +236,56 @@ ytDlp.video();
 
 ---
 
+## Audio API
+
+```ts
+ytDlp.audio();
+```
+
+`audio()` extracts audio only and supports the same `download()`, `buffer()`, and `stream()` methods as the video API.
+
+Configure the output format before calling `audio()`:
+
+```ts
+new YtDlp({ url }).audioFormat('mp3').output('./audio.%(ext)s').audio().download();
+```
+
+### download()
+
+```ts
+{
+  origin: string;
+  title: string;
+  path: string;
+}
+```
+
+---
+
+### buffer()
+
+```ts
+{
+  origin: string;
+  title: string;
+  buffer: Buffer;
+}
+```
+
+---
+
+### stream()
+
+```ts
+{
+  origin: string;
+  title: string;
+  stream: Readable;
+}
+```
+
+---
+
 ## Thumbnail API
 
 ```ts
@@ -253,7 +304,7 @@ Promise<string | null>;
 
 - `url` is required
 - `output` is required for `.download()`
-- `audioOnly` and `mergeFormat` should not be used together
+- `audio()` enables `audioOnly`, so `mergeFormat` is ignored for audio extraction
 - FFmpeg must exist
 
 ---
@@ -265,6 +316,7 @@ YtDlp
  ├─ YtDlpConfig
  ├─ YtDlpArgsBuilder
  ├─ YtDlpRunner
+ ├─ YtDlpAudio
  ├─ YtDlpVideo
  └─ YtDlpThumbnail
 ```
