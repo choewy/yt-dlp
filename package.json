@@ -4,24 +4,26 @@
   "description": "Node.js/TypeScript wrapper for yt-dlp with automatic binary installation and ffmpeg-static integration",
   "license": "MIT",
   "author": "choewy",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "types": "./dist/src/index.d.ts",
+      "require": "./dist/src/index.js",
+      "default": "./dist/src/index.js"
     }
   },
   "files": [
-    "dist",
-    "package.json"
+    "dist/src",
+    "README.md",
+    "LICENSE.md"
   ],
   "scripts": {
     "prepare": "node scripts/prepare",
     "postinstall": "node dist/install.js",
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
     "dev": "nodemon -e ts -w src --exec ts-node src/bootstrap.ts",
-    "build": "npx tsc -b tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json",
     "test": "jest --config jest.config.json --passWithNoTests",
     "test:watch": "jest --config jest.config.json --watch"
   },
@@ -31,8 +33,15 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^10.0.1",
+    "@semantic-release/changelog": "^7.0.0",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/exec": "^7.1.0",
+    "@semantic-release/git": "^11.0.1",
+    "@semantic-release/npm": "^13.1.5",
+    "@semantic-release/release-notes-generator": "^14.1.1",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.6.0",
+    "conventional-changelog-conventionalcommits": "^10.2.1",
     "eslint": "^10.2.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
@@ -43,6 +52,7 @@
     "lint-staged": "^16.4.0",
     "nodemon": "^3.1.14",
     "prettier": "^3.8.3",
+    "semantic-release": "^25.0.8",
     "ts-jest": "^29.4.9",
     "ts-loader": "^9.5.7",
     "ts-node": "^10.9.2",

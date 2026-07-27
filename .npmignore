@@ -17,6 +17,7 @@ tsconfig.tsbuildinfo
 jest.config.json
 .prettierrc
 .eslint.config.mjs
+releaserc.json
 
 !dist
 !package.json
