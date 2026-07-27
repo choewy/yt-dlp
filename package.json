@@ -20,7 +20,7 @@
   ],
   "scripts": {
     "prepare": "node scripts/prepare",
-    "postinstall": "node dist/install.js",
+    "postinstall": "node dist/src/install.js",
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
     "dev": "nodemon -e ts -w src --exec ts-node src/bootstrap.ts",
     "build": "tsc -p tsconfig.build.json",
